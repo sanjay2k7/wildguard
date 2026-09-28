@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en" translate="no" class="notranslate">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="WILDGUARD AI — AI-Powered Human-Wildlife Conflict Monitoring and Prevention System. Operational control-room dashboard.">
+  <title>WILDGUARD AI — Forest Edge Monitoring</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+</head>
+<body>
+
+  <!-- ====================================================== -->
+  <!-- APPLICATION LAYOUT                                      -->
+  <!-- ====================================================== -->
+  <div class="app-layout">
+
+    <!-- ====================================================== -->
+    <!-- TOP HEADER                                              -->
+    <!-- ====================================================== -->
+    <header class="top-header" id="top-header">
+      <div class="header-left">
+        <div class="brand" id="brand">
+          <h1 class="brand-title">WILDGUARD AI</h1>
+          <p class="brand-subtitle">Forest Edge Monitoring</p>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <div class="system-status" id="system-status" aria-label="System status">
+          <span class="status-indicator" aria-hidden="true"></span>
+          <span class="status-label">SYSTEM ONLINE</span>
+        </div>
+
+        <div class="active-context" aria-label="Active monitoring context">
+          <span class="active-zone" id="header-active-zone" data-zone-id="zone-1">Zone 1</span>
+          <span class="active-camera" id="header-active-camera" data-camera-id="camera-01">Camera 01</span>
+        </div>
+
+        <button class="notification-indicator" id="notification-indicator" type="button" aria-label="Notifications — 0 unread alerts">
+          <span aria-hidden="true">Notifications</span>
+          <span class="notification-count" id="notification-count">0</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ====================================================== -->
+    <!-- SIDEBAR NAVIGATION                                      -->
+    <!-- ====================================================== -->
+    <aside class="sidebar" id="sidebar" aria-label="Primary navigation">
+      <div class="sidebar-brand">
+        <span class="sidebar-brand-title">WILDGUARD AI</span>
+      </div>
+
+      <nav class="sidebar-nav" aria-label="Main sections">
+        <ul class="nav-list">
+          <li class="nav-item">
+            <button class="nav-link active" type="button" data-section="dashboard" aria-current="page" aria-label="Go to Dashboard">Dashboard</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" type="button" data-section="alerts" aria-label="Go to Alerts">Alerts</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" type="button" data-section="map" aria-label="Go to Map">Map</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" type="button" data-section="cameras" aria-label="Go to Feed">Feed</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" type="button" data-section="analytics" aria-label="Go to Analytics">Analytics</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" type="button" data-section="devices" aria-label="Go to Devices">Devices</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" type="button" data-section="settings" aria-label="Go to Settings">Settings</button>
+          </li>
+        </ul>
+      </nav>
+
+      <div class="sidebar-footer">
+        <p class="sidebar-context-label">Active Monitoring</p>
+        <p class="sidebar-context-value" data-camera-id="camera-01" data-zone-id="zone-1">Camera 01 → Zone 1</p>
+        <p class="sidebar-context-hint">One camera · One zone · Prototype scope</p>
+      </div>
+    </aside>
+
+    <!-- ====================================================== -->
+    <!-- MAIN CONTENT                                            -->
+    <!-- ====================================================== -->
+    <main class="main-content" id="main-content">
+
+      <!-- ====================================================== -->
+      <!-- DASHBOARD VIEW — DEFAULT VISIBLE                        -->
+      <!-- ====================================================== -->
+      <section class="view view-dashboard is-active" id="view-dashboard" data-section="dashboard" aria-labelledby="dashboard-heading">
+        <header class="view-header">
+          <h2 class="view-title" id="dashboard-heading">Dashboard</h2>
+          <p class="view-subtitle">Camera 01 is monitoring Zone 1 — live risk, location, and alerts at a glance.</p>
+          <div class="dashboard-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center">
+            <button type="button" class="button button--primary" id="button-select-video" data-action="select-video" aria-label="Select video file to play and detect">▶ Video</button>
+            <button type="button" class="button button--primary" id="button-start-camera-dashboard" data-action="start-camera" aria-label="Start live webcam">● Live</button>
+            <button type="button" class="button button--primary" id="button-send-alert">🚨 SEND ALERT </button>
+            <span class="form-hint" style="margin:0" id="dashboard-source-hint">Select VIDEO file or start LIVE webcam — both play in Camera 01</span>
+          </div>
+          <input type="file" id="video-file-input" accept="video/*" hidden aria-label="Video file input">
+        </header>
+
+        <!-- SUMMARY STATUS CARDS -->
+        <div class="summary-cards" aria-label="Summary status">
+
+          <article class="summary-card summary-card--high" id="card-high-risk" data-risk-level="HIGH">
+            <h3 class="card-label">HIGH RISK</h3>
+            <p class="card-value" id="high-risk-count">0</p>
+            <p class="card-description">Current unresolved high-risk alerts</p>
+          </article>
+
+          <article class="summary-card summary-card--medium" id="card-medium-risk" data-risk-level="MEDIUM">
+            <h3 class="card-label">MEDIUM RISK</h3>
+            <p class="card-value" id="medium-risk-count">0</p>
+            <p class="card-description">Current medium-risk alerts awaiting review</p>
+          </article>
+
+          <article class="summary-card" id="card-events-today">
+            <h3 class="card-label">EVENTS TODAY</h3>
+            <p class="card-value" id="events-today-count">0</p>
+            <p class="card-description">Detections recorded today</p>
+          </article>
+
+          <article class="summary-card" id="card-device-status" data-device-id="node-01" data-camera-id="camera-01">
+            <h3 class="card-label">DEVICE STATUS</h3>
+            <p class="card-value" id="device-status-value">1 / 1 Online</p>
+            <p class="card-description" id="device-status-description">Camera 01 — Online · Zone 1</p>
+          </article>
+
+        </div>
+
+        <!-- LIVE ALERTS — now full-width rectangle boxes (Map moved to Map view only) -->
+        <div class="operations-area" style="grid-template-columns: 1fr;">
+
+          <!-- LIVE ALERTS -->
+          <section class="panel panel-alerts" aria-labelledby="live-alerts-heading" style="min-height: 320px;">
+            <header class="panel-header">
+              <h3 class="panel-title" id="live-alerts-heading">Live Alerts</h3>
+              <span class="panel-count" id="live-alerts-count">0 active</span>
+            </header>
+
+            <div class="alerts-list" id="live-alerts-list">
+            </div>
+
+            <!-- Empty state — hidden when alerts exist, shown by JS when none -->
+            <p class="empty-state" id="live-alerts-empty" hidden>No active alerts — waiting for detections.</p>
+          </section>
+
+        </div>
+
+        <!-- LATEST DETECTION -->
+        <section class="panel panel-detection" aria-labelledby="latest-detection-heading" data-zone-id="zone-1" data-camera-id="camera-01">
+          <header class="panel-header">
+            <h3 class="panel-title" id="latest-detection-heading">Latest Detection</h3>
+            <span class="panel-status">Camera 01 → Zone 1</span>
+          </header>
+
+          <div class="detection-grid">
+            <dl class="detection-meta">
+              <div class="detection-row">
+                <dt>Camera:</dt>
+                <dd id="latest-camera">Camera 01</dd>
+              </div>
+              <div class="detection-row">
+                <dt>Zone:</dt>
+                <dd id="latest-zone" data-zone-id="zone-1">Zone 1</dd>
+              </div>
+              <div class="detection-row">
+                <dt>Species:</dt>
+                <dd id="latest-species">No detection yet</dd>
+              </div>
+              <div class="detection-row">
+                <dt>Confidence:</dt>
+                <dd id="latest-confidence">—</dd>
+              </div>
+            </dl>
+
+            <dl class="detection-meta">
+              <div class="detection-row">
+                <dt>Direction:</dt>
+                <dd id="latest-direction">—</dd>
+              </div>
+              <div class="detection-row">
+                <dt>Risk:</dt>
+                <dd id="latest-risk" data-risk-level="">—</dd>
+              </div>
+              <div class="detection-row">
+                <dt>Risk Score:</dt>
+                <dd id="latest-risk-score">—</dd>
+              </div>
+              <div class="detection-row">
+                <dt>Time:</dt>
+                <dd id="latest-timestamp"><time datetime="">—</time></dd>
+              </div>
+            </dl>
+          </div>
+
+          <p class="detection-note">Detection is associated with Zone 1 coordinates on the map. Camera provides video; zone provides location.</p>
+          <p class="empty-state" id="latest-detection-empty" hidden>No detection data — waiting for camera.</p>
+        </section>
+
+      </section>
+
+      <!-- ====================================================== -->
+      <!-- ALERTS VIEW                                             -->
+      <!-- ====================================================== -->
+      <section class="view view-alerts" id="view-alerts" data-section="alerts" aria-labelledby="alerts-view-heading" hidden>
+        <header class="view-header">
+          <h2 class="view-title" id="alerts-view-heading">Alerts</h2>
+          <p class="view-subtitle">Review all events from Camera 01 / Zone 1.</p>
+        </header>
+
+        <!-- Filter placeholders — no functionality yet -->
+        <div class="filter-bar" role="toolbar" aria-label="Alert filters">
+          <button class="filter-button is-active" type="button" data-filter="all">All</button>
+          <button class="filter-button" type="button" data-filter="high">High</button>
+          <button class="filter-button" type="button" data-filter="medium">Medium</button>
+          <button class="filter-button" type="button" data-filter="low">Low</button>
+          <button class="filter-button" type="button" data-filter="active">Active</button>
+          <button class="filter-button" type="button" data-filter="resolved">Resolved</button>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="alerts-table" aria-label="All alerts">
+            <thead>
+              <tr>
+                <th scope="col">Time</th>
+                <th scope="col">Species</th>
+                <th scope="col">Zone</th>
+                <th scope="col">Risk</th>
+                <th scope="col">Confidence</th>
+                <th scope="col">Status</th>
+                <th scope="col">Action</th>
+              </tr>
+            </thead>
+            <tbody id="alerts-table-body">
+            </tbody>
+          </table>
+        </div>
+
+        <p class="empty-state" id="alerts-empty" hidden>No alerts recorded yet.</p>
+      </section>
+
+      <!-- ====================================================== -->
+      <!-- MAP VIEW                                                -->
+      <!-- ====================================================== -->
+      <section class="view view-map" id="view-map" data-section="map" aria-labelledby="map-view-heading" hidden>
+        <header class="view-header">
+          <h2 class="view-title" id="map-view-heading">Map</h2>
+          <p class="view-subtitle">Geographic context for Zone 1 — detections are placed at zone coordinates.</p>
+        </header>
+
+        <div class="map-view-layout">
+          <div class="map-container map-container--large" id="map-large" role="region" aria-label="Large monitoring map" data-zone-id="zone-1" data-camera-id="camera-01">
+            <div class="map-placeholder">
+              <p class="map-placeholder-title">Zone 1 — Monitoring Area</p>
+              <p class="map-placeholder-note">Large map container ready for Leaflet — id="map-large"</p>
+              <div class="map-layer" data-zone-id="zone-1" aria-label="Zone 1 marker"></div>
+              <div class="map-layer" data-camera-id="camera-01" aria-label="Camera 01 marker"></div>
+              <div class="map-layer" aria-label="Animal detection marker"></div>
+            </div>
+            <div class="map-legend" aria-label="Map legend">
+              <h4 class="legend-title">Risk Legend</h4>
+              <ul class="legend-list">
+                <li data-risk-level="LOW">LOW</li>
+                <li data-risk-level="MEDIUM">MEDIUM</li>
+                <li data-risk-level="HIGH">HIGH</li>
+              </ul>
+            </div>
+          </div>
+
+          <aside class="info-panel" aria-label="Map details">
+            <h3 class="info-panel-title">Zone Details</h3>
+            <dl class="info-list">
+              <div class="info-row"><dt>Selected Zone:</dt><dd id="map-view-zone" data-zone-id="zone-1">Zone 1</dd></div>
+              <div class="info-row"><dt>Camera:</dt><dd id="map-view-camera" data-camera-id="camera-01">Camera 01</dd></div>
+              <div class="info-row"><dt>Coordinates:</dt><dd id="map-view-coordinates">Not configured</dd></div>
+              <div class="info-row"><dt>Latitude:</dt><dd id="map-view-latitude">Latitude not configured</dd></div>
+              <div class="info-row"><dt>Longitude:</dt><dd id="map-view-longitude">Longitude not configured</dd></div>
+              <div class="info-row"><dt>Current Detection:</dt><dd id="map-view-detection">None — waiting for data</dd></div>
+              <div class="info-row"><dt>Risk:</dt><dd id="map-view-risk" data-risk-level="">None</dd></div>
+            </dl>
+            <p class="info-note">When backend sends { zone: "Zone 1", species: "Tiger", ... }, JavaScript will move the detection marker to Zone 1 coordinates.</p>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ====================================================== -->
+      <!-- CAMERAS VIEW — ONE CAMERA ONLY                          -->
+      <!-- ====================================================== -->
+      <section class="view view-cameras" id="view-cameras" data-section="cameras" aria-labelledby="cameras-heading" hidden>
+        <header class="view-header">
+          <h2 class="view-title" id="cameras-heading">Feed</h2>
+          <p class="view-subtitle">Prototype scope: one camera — Camera 01 assigned to Zone 1.</p>
+        </header>
+
+        <div class="camera-toolbar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+            <button type="button" class="button button--primary" data-action="select-video" aria-label="Select video file to play in camera">▶ Video</button>
+            <button type="button" class="button button--primary" data-action="start-camera" aria-label="Start live webcam">● Live</button>
+            <span class="form-hint" style="align-self:center;margin:0" id="camera-source-hint">VIDEO = file · LIVE = webcam · drag & drop supported</span>
+          </div>
+
+        <article class="camera-card" id="camera-card-01" data-camera-id="camera-01" data-zone-id="zone-1">
+          <header class="camera-card-header">
+            <h3 class="camera-name" id="camera-01-name">Camera 01 <span id="camera-source-badge" class="device-status-badge" style="margin-left:8px;vertical-align:middle;font-size:10px;padding:2px 7px;background:var(--bg-input);border-color:var(--border-subtle);color:var(--text-muted)">OFFLINE</span></h3>
+            <dl class="camera-meta">
+              <div class="meta-row"><dt>Source:</dt><dd id="camera-source-label" data-source="offline">No source</dd></div>
+              <div class="meta-row"><dt>Assigned Zone:</dt><dd id="camera-01-zone" data-zone-id="zone-1">Zone 1</dd></div>
+              <div class="meta-row"><dt>Status:</dt><dd id="camera-01-status">Offline</dd></div>
+              <div class="meta-row"><dt>Zone Latitude:</dt><dd id="camera-01-zone-lat">Latitude not configured</dd></div>
+              <div class="meta-row"><dt>Zone Longitude:</dt><dd id="camera-01-zone-lng">Longitude not configured</dd></div>
+            </dl>
+          </header>
+
+          <div class="camera-feed-wrapper">
+            <video class="camera-feed" id="camera-feed-01" autoplay playsinline muted disablePictureInPicture controlsList="nodownload nofullscreen noremoteplayback" translate="no" data-camera-id="camera-01" aria-label="Camera 01 live feed — waiting for stream">
+            </video>
+
+            <!-- Overlay structure prepared for future AI bounding boxes -->
+            <div class="camera-overlay" id="camera-overlay-01" aria-hidden="true">
+              <div class="overlay-bbox" data-overlay="bbox" hidden></div>
+              <div class="overlay-label" data-overlay="label" hidden>
+                <span id="overlay-species">—</span>
+                <span id="overlay-confidence">—</span>
+                <span id="overlay-risk" data-risk-level="">—</span>
+              </div>
+            </div>
+
+            <!-- Empty / waiting state -->
+            <div class="camera-empty-state" id="camera-empty-state-01">
+              <p class="empty-state-title">Waiting for camera…</p>
+              <p class="empty-state-text">No stream connected. JavaScript will attach the laptop webcam via getUserMedia later.</p>
+              <p class="empty-state-text">Future overlay: bounding box · species · confidence · risk</p>
+            </div>
+          </div>
+
+          <footer class="camera-card-footer">
+            <p class="camera-note">Workflow: Camera 01 captures → AI detects → detection is tagged with Zone 1 → map shows detection at Zone 1 location.</p>
+          </footer>
+        </article>
+
+        <!-- Extensibility note — no extra cameras rendered, but structure allows addition -->
+        <p class="extensibility-note">Additional cameras can be added as new <code>camera-card</code> elements with <code>data-camera-id</code> and <code>data-zone-id</code> without rebuilding the layout.</p>
+      </section>
+
+      <!-- ====================================================== -->
+      <!-- ANALYTICS VIEW                                          -->
+      <!-- ====================================================== -->
+      <section class="view view-analytics" id="view-analytics" data-section="analytics" aria-labelledby="analytics-heading" hidden>
+        <header class="view-header">
+          <h2 class="view-title" id="analytics-heading">Analytics</h2>
+          <p class="view-subtitle">Containers for future charts — no charts initialized in HTML.</p>
+        </header>
+
+        <div class="analytics-grid">
+          <section class="analytics-card" id="analytics-detection-count" aria-labelledby="analytics-detection-count-title">
+            <h3 class="analytics-card-title" id="analytics-detection-count-title">Detection Count</h3>
+            <p class="analytics-value" id="analytics-detection-count-value">Demo: 5 events today</p>
+            <p class="analytics-description">Total detections in selected period.</p>
+            <div class="chart-placeholder" aria-label="Detection count chart placeholder">Chart placeholder — waiting for data</div>
+          </section>
+
+          <section class="analytics-card" id="analytics-species-distribution" aria-labelledby="analytics-species-title">
+            <h3 class="analytics-card-title" id="analytics-species-title">Species Distribution</h3>
+            <p class="analytics-value" id="analytics-species-value">Demo: Tiger 2 · Wild Boar 3</p>
+            <p class="analytics-description">Breakdown by detected species.</p>
+            <div class="chart-placeholder" aria-label="Species distribution chart placeholder">Chart placeholder — waiting for data</div>
+          </section>
+
+          <section class="analytics-card" id="analytics-risk-distribution" aria-labelledby="analytics-risk-title">
+            <h3 class="analytics-card-title" id="analytics-risk-title">Risk Distribution</h3>
+            <p class="analytics-value" id="analytics-risk-value">HIGH 2 · MEDIUM 1 · LOW 2</p>
+            <p class="analytics-description">Events grouped by assessed risk level.</p>
+            <div class="chart-placeholder" aria-label="Risk distribution chart placeholder">Chart placeholder — waiting for data</div>
+          </section>
+
+          <section class="analytics-card" id="analytics-activity-by-time" aria-labelledby="analytics-time-title">
+            <h3 class="analytics-card-title" id="analytics-time-title">Activity by Time</h3>
+            <p class="analytics-value" id="analytics-time-value">Peak: 02:00–03:00 IST (demo)</p>
+            <p class="analytics-description">Detections aggregated by hour.</p>
+            <div class="chart-placeholder" aria-label="Activity by time chart placeholder">Chart placeholder — waiting for data</div>
+          </section>
+
+          <section class="analytics-card" id="analytics-zone-activity" aria-labelledby="analytics-zone-title">
+            <h3 class="analytics-card-title" id="analytics-zone-title">Zone Activity</h3>
+            <p class="analytics-value" id="analytics-zone-value">Zone 1: 5 events</p>
+            <p class="analytics-description">Events per monitoring zone.</p>
+            <div class="chart-placeholder" aria-label="Zone activity chart placeholder">Chart placeholder — waiting for data</div>
+          </section>
+
+          <section class="analytics-card" id="analytics-response-time" aria-labelledby="analytics-response-title">
+            <h3 class="analytics-card-title" id="analytics-response-title">Alert Response Time</h3>
+            <p class="analytics-value" id="analytics-response-value">No data available</p>
+            <p class="analytics-description">Time from alert to human acknowledgement — populated after backend integration.</p>
+            <div class="chart-placeholder" aria-label="Response time chart placeholder">No data available</div>
+          </section>
+        </div>
+
+        <div class="pattern-analysis" id="pattern-analysis" style="margin-top:16px">
+          <h3 class="panel-title" id="pattern-analysis-heading">Pattern Analysis <span class="risk-badge risk-badge--medium" style="margin-left:8px">SAMPLE</span></h3>
+          <p class="view-subtitle" id="pattern-analysis-note">Example patterns for demo — connects to <code>/api/patterns</code> when backend is ready. Famous patterns everyone knows + 1 novel rule this system mines.</p>
+          <div class="analytics-grid" id="pattern-list" style="margin-top:10px">
+            <section class="analytics-card" id="pattern-sample-1" data-pattern-id="pat-dec-paddy" data-pattern-status="Suggested">
+              <h3 class="analytics-card-title">Zone 1 + Dec + Paddy + Night → Elephant HIGH</h3>
+              <p class="analytics-value" id="pattern-sample-1-value">8 of last 10 Dec nights · conf 80%</p>
+              <p class="analytics-description">Famous seasonal pattern. Suggested — officer confirms Yes/No in Alert Details.</p>
+              <div class="chart-placeholder" aria-label="Sample pattern 1 chart">Dec ■■■■■■■■□□ 8/10</div>
+            </section>
+            <section class="analytics-card" id="pattern-sample-2" data-pattern-id="pat-pressure-moon" data-pattern-status="Suggested">
+              <h3 class="analytics-card-title">Pressure drop + dark moon + 2-night streak → Boar raid</h3>
+              <p class="analytics-value" id="pattern-sample-2-value">Novel rule mined by system · conf 65%</p>
+              <p class="analytics-description">Unknown pattern no one wrote: weather front + darkness + boldness streak predicts first raid with zero same-month history.</p>
+              <div class="chart-placeholder" aria-label="Sample pattern 2 chart">Streak ■■□ + pressure ↘ + moon ●</div>
+            </section>
+            <section class="analytics-card" id="pattern-sample-3" data-pattern-id="pat-prey-tiger" data-pattern-status="Official">
+              <h3 class="analytics-card-title">Deer within 2h → Tiger follows same trail</h3>
+              <p class="analytics-value" id="pattern-sample-3-value">5 of 6 sequences · conf 83% · Official</p>
+              <p class="analytics-description">Prey co-occurrence: deer sighting raises tiger risk for next 2 hours on same trail.</p>
+              <div class="chart-placeholder" aria-label="Sample pattern 3 chart">Deer → Tiger 5/6</div>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================== -->
+      <!-- DEVICES VIEW                                            -->
+      <!-- ====================================================== -->
+      <section class="view view-devices" id="view-devices" data-section="devices" aria-labelledby="devices-heading" hidden>
+        <header class="view-header">
+          <h2 class="view-title" id="devices-heading">Devices</h2>
+          <p class="view-subtitle">Health of the single prototype monitoring device.</p>
+        </header>
+
+        <article class="device-card" id="device-node-01" data-device-id="node-01" data-camera-id="camera-01" data-zone-id="zone-1">
+          <header class="device-card-header">
+            <h3 class="device-name">Camera 01 / Node 01</h3>
+            <span class="device-status-badge" id="device-status-badge">Online</span>
+          </header>
+
+          <dl class="device-details">
+            <div class="detail-row">
+              <dt>Status:</dt>
+              <dd id="device-field-status">Online</dd>
+            </div>
+            <div class="detail-row">
+              <dt>Camera:</dt>
+              <dd id="device-field-camera">Good</dd>
+            </div>
+            <div class="detail-row">
+              <dt>Network:</dt>
+              <dd id="device-field-network">Good</dd>
+            </div>
+            <div class="detail-row">
+              <dt>Last heartbeat:</dt>
+              <dd id="device-field-heartbeat">Waiting for backend</dd>
+            </div>
+            <div class="detail-row">
+              <dt>Power / Battery:</dt>
+              <dd id="device-field-power">Not available in prototype — laptop power only</dd>
+            </div>
+            <div class="detail-row">
+              <dt>Solar:</dt>
+              <dd id="device-field-solar">Not available in prototype</dd>
+            </div>
+            <div class="detail-row">
+              <dt>Assigned Zone:</dt>
+              <dd id="device-field-zone" data-zone-id="zone-1">Zone 1</dd>
+            </div>
+          </dl>
+
+          <p class="device-note">Hardware battery/solar fields are marked "Not available in prototype" because the laptop prototype does not include field power hardware.</p>
+        </article>
+
+        <p class="extensibility-note">Additional devices can be added as new <code>device-card</code> elements with <code>data-device-id</code> without rebuilding the layout.</p>
+      </section>
+
+      <!-- ====================================================== -->
+      <!-- SETTINGS VIEW                                           -->
+      <!-- ====================================================== -->
+      <section class="view view-settings" id="view-settings" data-section="settings" aria-labelledby="settings-heading" hidden>
+        <header class="view-header">
+          <h2 class="view-title" id="settings-heading">Settings</h2>
+          <p class="view-subtitle">Configure Zone 1 and Camera 01. Zone coordinates determine map placement.</p>
+        </header>
+
+        <form class="settings-form" id="settings-form" aria-label="Monitoring configuration">
+          <fieldset class="settings-fieldset">
+            <legend class="fieldset-title">Monitoring Zone</legend>
+
+            <div class="form-group">
+              <label class="form-label" for="setting-zone-name">Zone Name</label>
+              <input class="form-input" id="setting-zone-name" name="zone-name" type="text" value="Zone 1" placeholder="Zone 1" data-field="zone-name">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="setting-zone-latitude">Zone Latitude</label>
+              <input class="form-input" id="setting-zone-latitude" name="zone-latitude" type="text" value="21.4624" placeholder="21.4624" data-field="zone-latitude" inputmode="decimal" autocomplete="off">
+              <p class="form-hint">Similipal, Odisha — e.g., 21.4624. Used to position Zone 1 on the map.</p>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="setting-zone-longitude">Zone Longitude</label>
+              <input class="form-input" id="setting-zone-longitude" name="zone-longitude" type="text" value="86.7679" placeholder="86.7679" data-field="zone-longitude" inputmode="decimal" autocomplete="off">
+              <p class="form-hint">Similipal, Odisha — e.g., 86.7679. No live GPS from camera.</p>
+            </div>
+          </fieldset>
+
+          <fieldset class="settings-fieldset">
+            <legend class="fieldset-title">Camera</legend>
+
+            <div class="form-group">
+              <label class="form-label" for="setting-camera-name">Camera Name</label>
+              <input class="form-input" id="setting-camera-name" name="camera-name" type="text" value="Camera 01" placeholder="Camera 01" data-field="camera-name" data-camera-id="camera-01">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="setting-assigned-zone">Assigned Zone</label>
+              <select class="form-select" id="setting-assigned-zone" name="assigned-zone" data-field="assigned-zone" data-camera-id="camera-01">
+                <option value="zone-1" selected>Zone 1</option>
+              </select>
+              <p class="form-hint">Camera 01 → Zone 1. All detections from Camera 01 are associated with Zone 1.</p>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="setting-monitoring-status">Monitoring Status</label>
+              <select class="form-select" id="setting-monitoring-status" name="monitoring-status" data-field="monitoring-status">
+                <option value="active" selected>Active</option>
+                <option value="paused">Paused</option>
+                <option value="maintenance">Maintenance</option>
+              </select>
+            </div>
+          </fieldset>
+
+          <div class="form-actions">
+            <button class="button button--primary" type="button" id="settings-save-button">Save Configuration</button>
+            <p class="form-note">Save is non-functional in prototype — JavaScript will handle this after backend integration.</p>
+          </div>
+        </form>
+
+        <!-- Explicit relationship summary for judges -->
+        <aside class="relationship-summary" aria-label="Camera to zone relationship">
+          <h3 class="summary-title">Current Configuration</h3>
+          <dl class="relationship-list">
+            <div class="relationship-row"><dt>Camera 01 assigned to:</dt><dd data-zone-id="zone-1" data-camera-id="camera-01">Zone 1</dd></div>
+            <div class="relationship-row"><dt>Zone 1 latitude:</dt><dd id="settings-summary-lat">Not configured</dd></div>
+            <div class="relationship-row"><dt>Zone 1 longitude:</dt><dd id="settings-summary-lng">Not configured</dd></div>
+          </dl>
+          <p class="relationship-note">Flow: Camera 01 detects Tiger → detection.zone = Zone 1 → JavaScript reads Zone 1 coordinates → map places Tiger marker at Zone 1.</p>
+        </aside>
+
+        <!-- Reset — small utility -->
+        <div class="settings-fieldset" style="margin-top:12px;max-width:860px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div>
+            <h4 style="margin:0;font-size:12px;font-weight:800;color:var(--text-primary)">Reset Data</h4>
+            <p class="form-hint" style="margin:4px 0 0">Clears recent detections & alerts (localStorage + dashboard). Does not reset zone settings.</p>
+          </div>
+          <button type="button" class="button button--small" id="button-reset-detections" data-action="reset-detections" aria-label="Reset recent detections and alerts" style="border-color:rgba(224,58,62,0.32);color:#e03a3e;background:rgba(224,58,62,0.08)">↺ Reset</button>
+        </div>
+
+
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ====================================================== -->
+  <!-- ALERT DETAIL PANEL — HIDDEN BY DEFAULT                  -->
+  <!-- Opened by JavaScript when View Details is clicked       -->
+  <!-- ====================================================== -->
+  <aside class="alert-detail-panel" id="alert-detail-panel" role="dialog" aria-labelledby="alert-detail-heading" aria-modal="true" hidden data-alert-id="">
+    <header class="detail-header">
+      <h2 class="detail-title" id="alert-detail-heading">Alert Details</h2>
+      <button class="button button--icon" type="button" id="alert-detail-close" aria-label="Close alert details">Close</button>
+    </header>
+
+    <div class="detail-body">
+      <dl class="detail-grid">
+        <div class="detail-row"><dt>Severity:</dt><dd id="detail-severity" data-field="risk-level">—</dd></div>
+        <div class="detail-row"><dt>Species:</dt><dd id="detail-species" data-field="species">—</dd></div>
+        <div class="detail-row"><dt>AI Confidence:</dt><dd id="detail-confidence" data-field="confidence">—</dd></div>
+        <div class="detail-row"><dt>Zone:</dt><dd id="detail-zone" data-field="zone-id" data-zone-id="zone-1">—</dd></div>
+        <div class="detail-row"><dt>Camera:</dt><dd id="detail-camera" data-field="camera-id" data-camera-id="camera-01">—</dd></div>
+        <div class="detail-row"><dt>Detection Time:</dt><dd id="detail-timestamp" data-field="timestamp"><time datetime="">—</time></dd></div>
+        <div class="detail-row"><dt>Direction:</dt><dd id="detail-direction" data-field="direction">—</dd></div>
+        <div class="detail-row"><dt>Risk Score:</dt><dd id="detail-risk-score" data-field="risk-score">—</dd></div>
+      </dl>
+
+      <section class="detail-section" aria-labelledby="detail-factors-heading">
+        <h3 class="detail-section-title" id="detail-factors-heading">Why This Alert?</h3>
+        <ul class="detail-list" id="detail-risk-factors">
+          <li>Species risk</li>
+          <li>Direction of movement</li>
+          <li>Proximity / context</li>
+          <li>Time / context (e.g., night activity)</li>
+          <li>Historical activity in zone</li>
+        </ul>
+      </section>
+
+      <section class="detail-section" aria-labelledby="detail-response-heading">
+        <h3 class="detail-section-title" id="detail-response-heading">Recommended Response</h3>
+        <p class="detail-note">Decision-support only — human must verify and act.</p>
+        <ul class="detail-list" id="detail-recommended-response">
+          <li>Notify patrol</li>
+          <li>Warn affected community</li>
+          <li>Human verification on site</li>
+        </ul>
+      </section>
+
+      <div class="detail-actions">
+        <button class="button button--primary" type="button" id="button-acknowledge-alert">Acknowledge Alert</button>
+        <button class="button button--secondary" type="button" id="button-close-alert">Close Alert</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ====================================================== -->
+  <!-- SYSTEM STATUS / EMPTY STATES — GLOBAL                   -->
+  <!-- ====================================================== -->
+  <div class="sr-only" aria-live="polite" aria-atomic="true" id="live-region">WILDGUARD AI dashboard loaded. Waiting for backend connection.</div>
+
+  <script src="script.js?v=wildguard-v2-2249"></script>
+</body>
+</html>
